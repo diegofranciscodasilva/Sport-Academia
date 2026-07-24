@@ -600,27 +600,46 @@ window.ocultarToast = ocultarToast;
 })();
 
 /* =============================================
-   10. BOTÃO VOLTAR AO TOPO
+   10. BOTÃO VOLTAR AO TOPO (CORRIGIDO)
+   Problema: main.focus() sem preventScroll:true
+   fazia o browser rolar de volta ao elemento,
+   interrompendo o scrollTo({ top:0 }) no meio.
+   Solução: setTimeout + preventScroll:true
 ============================================= */
 (function initBtnTopo() {
     try {
         const btn = qs('#btn-topo');
         if (!btn) return;
 
+        /* Mostra/oculta o botão conforme posição do scroll */
         const onScroll = debounce(() => {
             const visivel = window.scrollY > 400;
-            btn.hidden = false; // mantém no DOM para animação
+            btn.hidden = false;
             btn.classList.toggle('is-visible', visivel);
             btn.setAttribute('aria-hidden', String(!visivel));
         }, 100);
 
         window.addEventListener('scroll', onScroll, { passive: true });
 
+        /* Ao clicar, rola ao topo e só move o foco DEPOIS que o scroll termina */
         btn.addEventListener('click', () => {
+
+            /* 1. Rola suavemente até o topo */
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            // Devolve foco ao início da página (acessibilidade)
-            const main = qs('#conteudo-principal');
-            if (main) { main.setAttribute('tabindex', '-1'); main.focus(); }
+
+            /* 2. Aguarda o scroll terminar (~650ms) antes de mover o foco.
+                  preventScroll:true impede o browser de rolar de volta
+                  ao tentar exibir o elemento focado — era o bug. */
+            setTimeout(() => {
+                const main = qs('#conteudo-principal');
+                if (main) {
+                    main.setAttribute('tabindex', '-1');
+
+                    /* preventScroll:true = foca sem acionar rolagem automática */
+                    main.focus({ preventScroll: true });
+                }
+            }, 650);
+
         });
 
     } catch (e) {
